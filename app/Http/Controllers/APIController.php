@@ -36,7 +36,7 @@ class APIController extends Controller
     }
     public function user_cart(){        
         $userId = auth()->id();
-        
+
         $cartItems = Cart::with('product')
                             ->where('user_id', $userId)
                             ->get();
@@ -75,12 +75,58 @@ class APIController extends Controller
                 'user_id' => $user->id,
                 'product_id' => $validated['product_id'],
                 'stock' => $validated['quantity'],
-            ]);
+            ]); 
             return response()->json(['message' => 'Product added to cart'], 200);
         }
     }
+    public function createOrder(Request $request)
+    {
+        $validated = $request->validate([
+            'cart_items' => 'required|array',
+            'cart_items.*.product_id' => 'required|exists:products,id',
+            'cart_items.*.stock' => 'required|integer|min:1',
+        ]);
 
-    public function user_order($user, $cart){
-        
+        $orders = [];
+        $totalOrderPrice = 0;
+
+        foreach ($validated['cart_items'] as $item) {
+            $product = Product::findOrFail($item['product_id']);
+
+            if ($product->stock < $item['stock']) {
+                return response()->json([
+                    'error' => "Insufficient stock for product {$product->name}",
+                ], 400);
+            }
+
+            // Deduct stock
+            $product->stock -= $item['stock'];
+            $product->save();
+
+            // Create the order
+            $order = Order::create([
+                'user_id' => Auth::id(),
+                'product_id' => $item['product_id'],
+                'stock' => $item['stock'],
+                'status' => 'diproses',
+            ]);
+
+            $orders[] = $order;
+            $totalOrderPrice += $product->price * $item['stock'];
+        }
+
+        return response()->json([
+            'message' => 'Orders created successfully',
+            'orders' => $orders,
+            'totalOrderPrice' => $totalOrderPrice,
+        ], 201);
     }
+    // Function to get all orders for the authenticated user
+    public function getOrders()
+    {
+        $orders = Order::with('product')->where('user_id', Auth::id())->get();
+
+        return response()->json($orders);
+    }
+
 }

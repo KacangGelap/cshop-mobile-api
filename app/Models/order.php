@@ -14,7 +14,7 @@ class order extends Model
         'user_id',
         'product_id',
         'stock',
-        'status'
+        'status' #enum('diproses','dikirim','diterima','dikembalikan')
     ];
     public function user(){
         return $this->belongTo('App\Models\User');
