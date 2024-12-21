@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\product, App\Models\User, App\Models\cart, App\Models\Order ;
+use App\Models\product, App\Models\User, App\Models\cart, App\Models\order ;
 use Auth;
 class APIController extends Controller
 {
@@ -109,7 +109,7 @@ class APIController extends Controller
             $product->save();
 
             // Create order
-            Order::create([
+            order::create([
                 'user_id' => $user->id,
                 'product_id' => $item['product_id'],
                 'stock' => $item['quantity'],
@@ -124,9 +124,9 @@ class APIController extends Controller
     }
 
     // Function to get all orders for the authenticated user
-    public function getOrders()
+    public function getorders()
     {
-        $orders = Order::with('product')->where('user_id', Auth::id())->get();
+        $orders = order::with('product')->where('user_id', Auth::id())->get();
 
         return response()->json($orders);
     }
