@@ -34,6 +34,7 @@ Route::middleware('auth:sanctum')->group( function(){
     Route::get('/profile/{id}',[APIController::class, 'user_profile'])->name('user.profile');
     Route::get('/user_cart',[APIController::class, 'user_cart'])->name('cart.show');
     Route::post('/cart',[APIController::class, 'add_to_cart'])->name('cart.add');    
+    Route::post('/create-order',[APIController::class, 'createOrder'])->name('order.add');
 });
 
 

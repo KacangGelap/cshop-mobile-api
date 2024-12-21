@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\product, App\Models\User, App\Models\cart ;
+use App\Models\product, App\Models\User, App\Models\cart, App\Models\Order ;
 use Auth;
 class APIController extends Controller
 {
@@ -83,44 +83,46 @@ class APIController extends Controller
     {
         $validated = $request->validate([
             'cart_items' => 'required|array',
-            'cart_items.*.product_id' => 'required|exists:products,id',
-            'cart_items.*.stock' => 'required|integer|min:1',
+            'cart_items.*.product_id' => 'required|integer|exists:product,id',
+            'cart_items.*.quantity' => 'required|integer|min:1',
+            'cart_items.*.total_price' => 'required|integer',
         ]);
 
-        $orders = [];
-        $totalOrderPrice = 0;
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
+        }
 
         foreach ($validated['cart_items'] as $item) {
             $product = Product::findOrFail($item['product_id']);
 
-            if ($product->stock < $item['stock']) {
+            if ($product->stock < $item['quantity']) {
                 return response()->json([
-                    'error' => "Insufficient stock for product {$product->name}",
-                ], 400);
+                    'message' => "Sorry, the product '{$product->name}' is out of stock",
+                    'status' => 'fail',
+                ], 200); // Use 200 to indicate a business logic error
             }
 
-            // Deduct stock
-            $product->stock -= $item['stock'];
+            // Reduce product stock
+            $product->stock -= $item['quantity'];
             $product->save();
 
-            // Create the order
-            $order = Order::create([
-                'user_id' => Auth::id(),
+            // Create order
+            Order::create([
+                'user_id' => $user->id,
                 'product_id' => $item['product_id'],
-                'stock' => $item['stock'],
-                'status' => 'diproses',
+                'stock' => $item['quantity'],
+                'total_price' => $item['total_price'],
             ]);
-
-            $orders[] = $order;
-            $totalOrderPrice += $product->price * $item['stock'];
         }
 
         return response()->json([
-            'message' => 'Orders created successfully',
-            'orders' => $orders,
-            'totalOrderPrice' => $totalOrderPrice,
+            'message' => 'Products ordered successfully',
+            'status' => 'success',
         ], 201);
     }
+
     // Function to get all orders for the authenticated user
     public function getOrders()
     {
